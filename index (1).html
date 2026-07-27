@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reçaíbos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#f6f6f6;
+    --panel-2:#ececec;
+    --line: rgba(0,0,0,0.09);
+    --text:#1c1c1c;
+    --muted:#6b6b6b;
+    --gold:#d9791b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image: radial-gradient(circle at 15% 0%, rgba(242,161,62,0.08), transparent 40%),
+                       radial-gradient(circle at 85% 100%, rgba(242,161,62,0.06), transparent 45%);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    padding-bottom:60px;
+  }
+  .display{ font-family:'Bebas Neue', sans-serif; letter-spacing:0.03em; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  .hero{
+    max-width:1440px;
+    margin:0 auto;
+    padding:44px 24px 24px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
+  }
+  .hero-logo{ width:120px; height:120px; border-radius:50%; margin:0 auto 16px; display:block; box-shadow:0 0 0 3px rgba(242,161,62,0.25); }
+  .hero h1{ font-size:clamp(40px,8vw,72px); margin:0; line-height:0.95; }
+  .hero p{ color:var(--muted); margin-top:10px; font-size:14px; font-family:'JetBrains Mono', monospace; letter-spacing:.05em; }
+
+  .sofa-section{ max-width:1440px; margin:22px auto 0; padding:0 24px; }
+  .sofa-title{
+    font-family:'JetBrains Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--muted); text-align:center; margin:0 0 14px;
+  }
+
+  .legend{
+    display:grid; grid-template-columns:repeat(7, 1fr); gap:10px;
+  }
+  .legend-chip{
+    display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 10px; border-radius:100px;
+    font-weight:700; font-size:12.5px; background:var(--panel); border:1px solid var(--line);
+    cursor:pointer; user-select:none; text-align:center; transition:transform .15s ease, border-color .15s ease;
+  }
+  .legend-chip:hover{ transform:translateY(-2px); border-color:currentColor; }
+  .legend-chip:active{ transform:translateY(0); }
+  .dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+  @media(max-width:900px){ .legend{ grid-template-columns:repeat(4,1fr); } }
+  @media(max-width:560px){ .legend{ grid-template-columns:repeat(2,1fr); } .legend-chip{ font-size:12px; } }
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(8,10,13,0.75); backdrop-filter:blur(2px);
+    align-items:flex-start; justify-content:center; padding:40px 16px; z-index:100; overflow-y:auto;
+  }
+  .modal-overlay.active{ display:flex; }
+  .modal-panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; max-width:640px; width:100%;
+    padding:28px; position:relative; margin-bottom:40px;
+  }
+  .modal-close{
+    position:absolute; top:16px; right:16px; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:14px; line-height:1;
+  }
+  .modal-name{ font-size:22px; font-weight:800; margin:0 0 4px; }
+  .modal-sub{ color:var(--muted); font-size:12.5px; font-family:'JetBrains Mono',monospace; margin-bottom:20px; }
+  .modal-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+  .modal-stat{ background:var(--panel-2); border-radius:10px; padding:12px 14px; }
+  .modal-stat .k{ font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; letter-spacing:.06em; }
+  .modal-stat .v{ font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; }
+  .modal-section-title{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:20px 0 10px; font-family:'JetBrains Mono',monospace; }
+  .modal-records{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+  .modal-rec{ background:var(--panel-2); border-radius:8px; padding:8px 10px; font-size:12px; display:flex; justify-content:space-between; gap:6px; }
+  .modal-rec .rv{ font-family:'JetBrains Mono',monospace; color:var(--text); }
+  .compare-row{ display:flex; gap:10px; align-items:center; margin-top:20px; flex-wrap:wrap; }
+  .compare-row select{
+    background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 12px;
+    font-family:'JetBrains Mono',monospace; font-size:12.5px;
+  }
+  .compare-table{ margin-top:16px; background:var(--panel-2); border-radius:10px; overflow:hidden; }
+  .compare-head, .compare-line{ display:grid; grid-template-columns:1.3fr 1fr 1fr; padding:10px 14px; font-size:13px; border-bottom:1px solid var(--line); align-items:center; }
+  .compare-head{ font-family:'JetBrains Mono',monospace; font-size:10.5px; text-transform:uppercase; color:var(--muted); }
+  .compare-line:last-child{ border-bottom:none; }
+  .compare-val{ font-family:'JetBrains Mono',monospace; text-align:center; }
+  .compare-val.win{ color:var(--gold); font-weight:700; }
+
+  .tabs{ max-width:1440px; margin:28px auto 0; padding:0 24px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .tab-btn{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; background:var(--panel); border:1px solid var(--line);
+    color:var(--muted); padding:10px 16px; border-radius:8px; cursor:pointer;
+  }
+  .tab-btn.active{ background:var(--gold); color:#1a1508; border-color:var(--gold); font-weight:700; }
+
+  .view{ display:none; max-width:1440px; margin:0 auto; padding:28px 24px 0; }
+  .view.active{ display:block; }
+
+  .totals-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:10px; }
+  #totals-cards, #weeks-cards{ grid-template-columns:repeat(4, 1fr); }
+  @media(max-width:820px){ #totals-cards, #weeks-cards{ grid-template-columns:repeat(2, 1fr); } }
+  @media(max-width:460px){ #totals-cards, #weeks-cards{ grid-template-columns:repeat(1, 1fr); } }
+  .stat-card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 12px; }
+  .stat-card .metric-label{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--muted); margin-bottom:10px; white-space:nowrap;
+  }
+  .stat-row{ display:flex; justify-content:space-between; align-items:center; padding:5px 0; gap:6px; }
+  .stat-row .name{
+    display:flex; align-items:center; font-size:11.5px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+  }
+  .stat-row .val{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700; color:var(--text);
+    white-space:nowrap; flex-shrink:0;
+  }
+  .stat-row.leader .val{ color:var(--gold); }
+  .stat-row{ cursor:pointer; }
+  .rank{
+    font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--muted);
+    min-width:16px; display:inline-block; text-align:right; flex-shrink:0; margin-right:3px;
+  }
+  .stat-row.leader .rank{ color:var(--gold); font-weight:700; }
+
+  .chart-controls{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .metric-btn{
+    font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--panel); border:1px solid var(--line);
+    color:var(--muted); padding:7px 14px; border-radius:100px; cursor:pointer;
+  }
+  .metric-btn.active{ background:var(--panel-2); color:var(--text); border-color:var(--text); }
+
+  .chart-wrap{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; }
+  .year-bars{ display:flex; flex-direction:column; gap:11px; }
+  .year-bar-row{ display:grid; grid-template-columns:150px 1fr 92px; align-items:center; gap:12px; }
+  .year-bar-name{
+    font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .year-bar-track{ background:var(--panel-2); border-radius:6px; height:24px; overflow:hidden; }
+  .year-bar-fill{ height:100%; border-radius:6px; min-width:2px; transition:width .3s ease; }
+  .year-bar-val{ font-family:'JetBrains Mono',monospace; font-size:12.5px; text-align:right; color:var(--text); }
+  @media(max-width:560px){ .year-bar-row{ grid-template-columns:92px 1fr 78px; gap:8px; } .year-bar-name{ font-size:11.5px; } }
+  .chart{ display:flex; align-items:flex-end; gap:14px; height:280px; padding:0 4px; min-width:640px; }
+  .year-col{ flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; }
+  .bars{ display:flex; gap:3px; align-items:flex-end; height:100%; width:100%; justify-content:center; }
+  .bar{ width:14px; border-radius:4px 4px 0 0; position:relative; transition:height .3s ease; min-height:2px; }
+  .bar .tip{
+    position:absolute; bottom:100%; left:50%; transform:translateX(-50%);
+    font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); white-space:nowrap; margin-bottom:3px;
+  }
+  .year-label{ margin-top:10px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); }
+
+  .records-table{ background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; overflow-x:auto; padding:0; }
+  .rec-row{ display:grid; align-items:stretch; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .rec-row:last-child{ border-bottom:none; }
+  .rec-row.head{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
+    letter-spacing:.02em; background:var(--panel-2); align-items:end;
+  }
+  .rec-row > div{ padding:14px 10px; border-right:1px solid var(--line); display:flex; align-items:center; }
+  .rec-row > div:last-child{ border-right:none; }
+  .rec-label{ font-weight:700; font-size:14px; line-height:1.25; padding-left:16px !important; text-align:left; background:var(--panel-2); }
+  .rec-row.head .rec-label{ visibility:hidden; }
+  .rec-row:not(.head):nth-child(even) .rec-label{ background:var(--panel); }
+  .rec-name{
+    flex-direction:column; justify-content:flex-end; width:100%;
+    text-align:center; font-weight:700; font-size:13px; line-height:1.3; gap:0; padding-bottom:12px !important;
+  }
+  .rec-name span{ display:block; }
+  .rec-val{ font-family:'JetBrains Mono',monospace; font-size:13.5px; white-space:nowrap; width:100%; justify-content:center; }
+  .rec-val.winner{ font-weight:800; }
+  .rec-row:not(.head):hover > div{ background:var(--panel-2); }
+
+  .insight-box{
+    margin-top:18px; background:var(--panel-2); border:1px solid var(--gold); border-radius:12px;
+    padding:16px 20px; font-size:13.5px; color:var(--text);
+  }
+  .insight-box b{ color:var(--gold); }
+
+  .weeks-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; margin-top:6px; }
+
+  .alert-card{
+    background:var(--panel); border-radius:14px; padding:18px 20px;
+    border:1px solid var(--line); border-left:4px solid var(--rc, var(--gold));
+  }
+  .alert-card .a-name{ font-weight:700; font-size:15px; margin-bottom:4px; }
+  .alert-card .a-tag{
+    display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.06em; padding:2px 8px; border-radius:100px; margin-bottom:8px;
+  }
+  .alert-card .a-tag.parado{ background:rgba(248,113,113,0.15); color:#f87171; }
+  .alert-card .a-tag.queda{ background:rgba(242,193,78,0.15); color:var(--gold); }
+  .alert-card .a-tag.aposentado{ background:rgba(139,149,161,0.18); color:var(--muted); }
+  .alert-card .a-desc{ font-size:13px; color:var(--muted); line-height:1.5; }
+
+  footer{
+    max-width:1440px; margin:40px auto 0; padding:20px 24px 0; text-align:center;
+    color:var(--muted); font-size:12px; border-top:1px solid var(--line);
+  }
+
+  @media(max-width:600px){ .bar{ width:10px; } .chart{ gap:6px; } }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <img src="logo.jpg" alt="Logo Reçaíbos MTB Unaí-MG" class="hero-logo">
+  <h1 class="display">REÇAÍBOS NO SOFÁ</h1>
+  <p>Fonte: Strava</p>
+</div>
+
+<div class="sofa-section">
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-view="totais">Totais da Carreira</button>
+  <button class="tab-btn" data-view="anos">Ano a Ano</button>
+  <button class="tab-btn" data-view="recordes">Recordes</button>
+  <button class="tab-btn" data-view="semanas">Últimas 4 Semanas</button>
+  <button class="tab-btn" data-view="alertas">⚠️ Alertas</button>
+</div>
+
+<div class="view active" id="view-totais">
+  <div class="totals-grid" id="totals-cards"></div>
+  <div class="insight-box" id="totals-insight"></div>
+</div>
+
+<div class="view" id="view-anos">
+  <div class="chart-controls" id="year-controls"></div>
+  <div class="chart-controls" id="metric-controls"></div>
+  <div class="chart-wrap"><div class="year-bars" id="chart-container"></div></div>
+  <div class="insight-box" id="anos-insight"></div>
+</div>
+
+<div class="view" id="view-recordes">
+  <div class="records-table" id="records-container"></div>
+  <div class="insight-box" id="records-insight"></div>
+</div>
+
+<div class="view" id="view-semanas">
+  <div class="weeks-grid" id="weeks-cards"></div>
+</div>
+
+<div class="view" id="view-alertas">
+  <div class="totals-grid" id="alerts-cards"></div>
+  <div class="insight-box" id="alerts-empty" style="display:none;">✅ Ninguém do grupo está com queda relevante ou parado no momento — geral pedalando normal.</div>
+</div>
+
+<footer>Fonte: Strava · Reçaíbos 🚴</footer>
+
+<div class="modal-overlay" id="rider-modal">
+  <div class="modal-panel">
+    <button class="modal-close" id="modal-close">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// Para adicionar um novo ciclista, basta acrescentar um novo objeto neste array.
+const RIDERS = [
+  {
+    id:'willian', name:'Willian Rodrigues', color:'#2dd4bf',
+    totals:{ ativ:395, dist:14993.3, elev:148681, tempoH: 766+58/60, tempoLabel:"766h 58min" },
+    years:{
+      2017:{ativ:4,  dist:128.5,  elev:1365,  tempoH:10+12/60,  tempoLabel:"10h12min"},
+      2018:{ativ:17, dist:675.4,  elev:6920,  tempoH:38+14/60,  tempoLabel:"38h14min"},
+      2019:{ativ:31, dist:1036.2, elev:10521, tempoH:55+3/60,   tempoLabel:"55h3min"},
+      2020:{ativ:74, dist:2992.9, elev:30418, tempoH:151+12/60, tempoLabel:"151h12min"},
+      2021:{ativ:37, dist:1437.2, elev:14296, tempoH:71+53/60,  tempoLabel:"71h53min"},
+      2022:{ativ:28, dist:1005.2, elev:9711,  tempoH:51+28/60,  tempoLabel:"51h28min"},
+      2023:{ativ:36, dist:1353.4, elev:14357, tempoH:67+42/60,  tempoLabel:"67h42min"},
+      2024:{ativ:68, dist:3003.4, elev:26043, tempoH:145+7/60,  tempoLabel:"145h7min"},
+      2025:{ativ:72, dist:2396.8, elev:25526, tempoH:127+21/60, tempoLabel:"127h21min"},
+      2026:{ativ:28, dist:963.9,  elev:9526,  tempoH:48+42/60,  tempoLabel:"48h42min"},
+    },
+    last4:{ ativSem:2, distSem:40.8, elevSem:427, tempoSem:"1h 59min" },
+    records:{
+      "Pedalada mais longa":"124,0 km", "Maior escalada":"561 m", "Maior ganho de elevação":"1.393 m",
+      "5 milhas":"13:07", "10 km":"16:54", "10 milhas":"29:39", "20 km":"37:55", "30 km":"1:01:53",
+      "40K":"1:26:43", "50 km":"1:51:43", "80K":"3:17:27", "50 milhas":"3:18:47", "90K":"3:41:57",
+      "100 km":"4:11:13", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'bruno', name:'Bruno Barros', color:'#f97350',
+    totals:{ ativ:430, dist:17791.6, elev:187257, tempoH: 955+52/60, tempoLabel:"955h 52min" },
+    years:{
+      2020:{ativ:44,  dist:1461.9, elev:15400, tempoH:84+12/60,  tempoLabel:"84h12min"},
+      2021:{ativ:110, dist:5191.6, elev:55471, tempoH:272+5/60,  tempoLabel:"272h5min"},
+      2022:{ativ:54,  dist:1839.9, elev:20047, tempoH:105+55/60, tempoLabel:"105h55min"},
+      2023:{ativ:39,  dist:1519.4, elev:16233, tempoH:87+28/60,  tempoLabel:"87h28min"},
+      2024:{ativ:41,  dist:1636.9, elev:14176, tempoH:81+53/60,  tempoLabel:"81h53min"},
+      2025:{ativ:100, dist:4107.1, elev:42996, tempoH:216+51/60, tempoLabel:"216h51min"},
+      2026:{ativ:42,  dist:2034.4, elev:22933, tempoH:107+25/60, tempoLabel:"107h25min"},
+    },
+    last4:{ ativSem:2, distSem:50.9, elevSem:593, tempoSem:"2h 25min" },
+    records:{
+      "Pedalada mais longa":"167,4 km", "Maior escalada":"750 m", "Maior ganho de elevação":"1.833 m",
+      "5 milhas":"8:49", "10 km":"11:05", "10 milhas":"21:03", "20 km":"35:26", "30 km":"1:03:01",
+      "40K":"1:26:20", "50 km":"1:50:10", "80K":"3:39:39", "50 milhas":"3:40:29", "90K":"4:04:05",
+      "100 km":"4:39:45", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'leandro', name:'Leandro Alvim', color:'#a78bfa',
+    totals:{ ativ:385, dist:16134.8, elev:150883, tempoH: 854+43/60, tempoLabel:"854h 43min" },
+    years:{
+      2016:{ativ:46, dist:1886.7, elev:16819, tempoH:100+26/60, tempoLabel:"100h26min"},
+      2017:{ativ:44, dist:2204.3, elev:22555, tempoH:127+14/60, tempoLabel:"127h14min"},
+      2018:{ativ:18, dist:733.3,  elev:8943,  tempoH:42+3/60,   tempoLabel:"42h3min"},
+      2019:{ativ:5,  dist:210.1,  elev:2181,  tempoH:11+31/60,  tempoLabel:"11h31min"},
+      2020:{ativ:37, dist:1804.2, elev:18969, tempoH:94+5/60,   tempoLabel:"94h5min"},
+      2021:{ativ:36, dist:1195.6, elev:13947, tempoH:68+48/60,  tempoLabel:"68h48min"},
+      2022:{ativ:5,  dist:174.7,  elev:2161,  tempoH:11+38/60,  tempoLabel:"11h38min"},
+      2023:{ativ:7,  dist:276.4,  elev:2546,  tempoH:15+9/60,   tempoLabel:"15h9min"},
+      2024:{ativ:54, dist:2693.0, elev:19028, tempoH:129+59/60, tempoLabel:"129h59min"},
+      2025:{ativ:92, dist:3222.1, elev:29425, tempoH:170+12/60, tempoLabel:"170h12min"},
+      2026:{ativ:41, dist:1733.9, elev:14309, tempoH:83+33/60,  tempoLabel:"83h33min"},
+    },
+    last4:{ ativSem:3, distSem:86.6, elevSem:700, tempoSem:"3h 28min" },
+    records:{
+      "Pedalada mais longa":"205,1 km", "Maior escalada":"657 m", "Maior ganho de elevação":"1.688 m",
+      "5 milhas":"2:22", "10 km":"4:24", "10 milhas":"17:22", "20 km":"37:53", "30 km":"55:45",
+      "40K":"1:25:48", "50 km":"1:50:05", "80K":"3:15:29", "50 milhas":"3:17:12", "90K":"3:47:03",
+      "100 km":"4:12:07", "100 milhas":"8:41:50", "180K":"9:33:44"
+    }
+  },
+  {
+    id:'wanderson', name:'Wanderson Silva', color:'#84cc16',
+    totals:{ ativ:366, dist:13496.7, elev:151060, tempoH: 709+4/60, tempoLabel:"709h 4min" },
+    years:{
+      2020:{ativ:54, dist:1895.5, elev:20325, tempoH:107+9/60,  tempoLabel:"107h9min"},
+      2021:{ativ:51, dist:2211.7, elev:22290, tempoH:113+55/60, tempoLabel:"113h55min"},
+      2022:{ativ:79, dist:2905.8, elev:32635, tempoH:149+34/60, tempoLabel:"149h34min"},
+      2023:{ativ:68, dist:2732.3, elev:32192, tempoH:140+26/60, tempoLabel:"140h26min"},
+      2024:{ativ:49, dist:2088.4, elev:21178, tempoH:102+17/60, tempoLabel:"102h17min"},
+      2025:{ativ:55, dist:1457.4, elev:19155, tempoH:81+51/60,  tempoLabel:"81h51min"},
+      2026:{ativ:10, dist:205.2,  elev:3285,  tempoH:13+49/60,  tempoLabel:"13h49min"},
+    },
+    last4:{ ativSem:1, distSem:16.9, elevSem:322, tempoSem:"1h 14min" },
+    records:{
+      "Pedalada mais longa":"123,5 km", "Maior escalada":"360 m", "Maior ganho de elevação":"1.393 m",
+      "5 milhas":"9:42", "10 km":"17:09", "10 milhas":"30:01", "20 km":"41:01", "30 km":"1:03:49",
+      "40K":"1:31:29", "50 km":"1:55:51", "80K":"3:19:13", "50 milhas":"3:20:35", "90K":"3:59:31",
+      "100 km":"5:01:54", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'weberty', name:'Weberty Antunes', color:'#38bdf8', retired:true,
+    totals:{ ativ:101, dist:3767.7, elev:37359, tempoH: 207+11/60, tempoLabel:"207h 11min" },
+    years:{
+      2019:{ativ:20, dist:641.9,  elev:6947,  tempoH:39+44/60, tempoLabel:"39h44min"},
+      2020:{ativ:70, dist:2752.2, elev:26876, tempoH:147+0/60, tempoLabel:"147h0min"},
+      2021:{ativ:7,  dist:249.6,  elev:2365,  tempoH:13+32/60, tempoLabel:"13h32min"},
+      2022:{ativ:0,  dist:0,      elev:0,     tempoH:0,        tempoLabel:"0h0min"},
+      2024:{ativ:4,  dist:123.9,  elev:1171,  tempoH:6+52/60,  tempoLabel:"6h52min"},
+      2025:{ativ:0,  dist:0,      elev:0,     tempoH:0,        tempoLabel:"0h0min"},
+      2026:{ativ:0,  dist:0,      elev:0,     tempoH:0,        tempoLabel:"0h0min"},
+    },
+    last4:{ ativSem:0, distSem:0, elevSem:0, tempoSem:"0h 0min" },
+    records:{
+      "Pedalada mais longa":"103,0 km", "Maior escalada":"168 m", "Maior ganho de elevação":"820 m",
+      "5 milhas":"3:27", "10 km":"6:21", "10 milhas":"20:57", "20 km":"31:23", "30 km":"56:16",
+      "40K":"1:30:55", "50 km":"2:00:26", "80K":"3:52:51", "50 milhas":"3:54:05", "90K":"4:16:35",
+      "100 km":"5:03:27", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'rodrigo', name:'Rodrigo Xavier', color:'#f472b6',
+    totals:{ ativ:188, dist:6301.7, elev:68067, tempoH: 316+5/60, tempoLabel:"316h 5min" },
+    years:{
+      2020:{ativ:49, dist:1817.7, elev:19151, tempoH:94+26/60, tempoLabel:"94h26min"},
+      2021:{ativ:52, dist:1938.6, elev:19233, tempoH:92+21/60, tempoLabel:"92h21min"},
+      2022:{ativ:21, dist:708.3,  elev:7665,  tempoH:32+30/60, tempoLabel:"32h30min"},
+      2023:{ativ:32, dist:774.2,  elev:8929,  tempoH:38+32/60, tempoLabel:"38h32min"},
+      2024:{ativ:13, dist:467.8,  elev:5132,  tempoH:22+52/60, tempoLabel:"22h52min"},
+      2025:{ativ:18, dist:557.1,  elev:7261,  tempoH:32+14/60, tempoLabel:"32h14min"},
+      2026:{ativ:3,  dist:37.8,   elev:697,   tempoH:3+7/60,   tempoLabel:"3h7min"},
+    },
+    last4:{ ativSem:0, distSem:0, elevSem:0, tempoSem:"0h 0min" },
+    records:{
+      "Pedalada mais longa":"123,7 km", "Maior escalada":"186 m", "Maior ganho de elevação":"1.107 m",
+      "5 milhas":"5:52", "10 km":"6:42", "10 milhas":"14:49", "20 km":"22:57", "30 km":"1:02:13",
+      "40K":"1:26:31", "50 km":"1:52:42", "80K":"3:33:59", "50 milhas":"3:35:23", "90K":"4:01:03",
+      "100 km":"4:43:52", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'vander', name:'Vander Luis', color:'#ef4444', retired:true,
+    totals:{ ativ:97, dist:3696.3, elev:37238, tempoH: 191+47/60, tempoLabel:"191h 47min" },
+    years:{
+      2020:{ativ:53, dist:2198.9, elev:22340, tempoH:115+14/60, tempoLabel:"115h14min"},
+      2021:{ativ:33, dist:1118.0, elev:10841, tempoH:56+46/60,  tempoLabel:"56h46min"},
+      2022:{ativ:10, dist:377.0,  elev:4032,  tempoH:19+16/60,  tempoLabel:"19h16min"},
+      2023:{ativ:1,  dist:2.2,    elev:25,    tempoH:0.5,        tempoLabel:"0h30min"},
+      2024:{ativ:0,  dist:0,      elev:0,     tempoH:0,          tempoLabel:"0h0min"},
+      2025:{ativ:0,  dist:0,      elev:0,     tempoH:0,          tempoLabel:"0h0min"},
+      2026:{ativ:0,  dist:0,      elev:0,     tempoH:0,          tempoLabel:"0h0min"},
+    },
+    last4:{ ativSem:0, distSem:0, elevSem:0, tempoSem:"0h 0min" },
+    records:{
+      "Pedalada mais longa":"123,7 km", "Maior escalada":"186 m", "Maior ganho de elevação":"1.021 m",
+      "5 milhas":"13:16", "10 km":"16:32", "10 milhas":"30:51", "20 km":"40:48", "30 km":"1:04:33",
+      "40K":"1:30:52", "50 km":"2:00:36", "80K":"3:51:16", "50 milhas":"3:52:24", "90K":"4:14:55",
+      "100 km":"4:43:06", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'rodrigomoura', name:'Rodrigo Moura', color:'#22c55e',
+    totals:{ ativ:86, dist:2312.1, elev:22626, tempoH: 135+14/60, tempoLabel:"135h 14min" },
+    years:{
+      2023:{ativ:1,  dist:4.8,    elev:16,   tempoH:43.42/60,  tempoLabel:"0h43min"},
+      2024:{ativ:50, dist:1429.4, elev:13793, tempoH:79+26/60, tempoLabel:"79h26min"},
+      2025:{ativ:22, dist:538.5,  elev:5334,  tempoH:32+53/60, tempoLabel:"32h53min"},
+      2026:{ativ:13, dist:339.3,  elev:3483,  tempoH:22+10/60, tempoLabel:"22h10min"},
+    },
+    last4:{ ativSem:0, distSem:4.6, elevSem:45, tempoSem:"16min 19s" },
+    records:{
+      "Pedalada mais longa":"61,0 km", "Maior escalada":"183 m", "Maior ganho de elevação":"770 m",
+      "5 milhas":"17:13", "10 km":"22:19", "10 milhas":"40:31", "20 km":"50:15", "30 km":"1:21:00",
+      "40K":"1:59:19", "50 km":"3:26:12", "80K":null, "50 milhas":null, "90K":null,
+      "100 km":null, "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'rodrigoborges', name:'Rodrigo Borges', color:'#f59e0b',
+    totals:{ ativ:139, dist:3760.3, elev:33740, tempoH: 199+23/60, tempoLabel:"199h 23min" },
+    years:{
+      2023:{ativ:30, dist:898.1,  elev:8216,  tempoH:55+42/60,  tempoLabel:"55h42min"},
+      2024:{ativ:75, dist:2191.0, elev:19131, tempoH:107+7/60,  tempoLabel:"107h7min"},
+      2025:{ativ:19, dist:441.2,  elev:4243,  tempoH:23+58/60,  tempoLabel:"23h58min"},
+      2026:{ativ:15, dist:229.9,  elev:2150,  tempoH:12+34/60,  tempoLabel:"12h34min"},
+    },
+    last4:{ ativSem:1, distSem:11.3, elevSem:97, tempoSem:"42min 22s" },
+    records:{
+      "Pedalada mais longa":"101,0 km", "Maior escalada":"173 m", "Maior ganho de elevação":"1.278 m",
+      "5 milhas":"14:59", "10 km":"18:45", "10 milhas":"31:36", "20 km":"39:36", "30 km":"1:09:05",
+      "40K":"1:32:39", "50 km":"1:59:20", "80K":"3:54:41", "50 milhas":"3:56:03", "90K":"7:04:04",
+      "100 km":"8:21:11", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'lucas', name:'Lucas Ribeiro', color:'#6366f1',
+    totals:{ ativ:86, dist:2619.6, elev:27567, tempoH: 169+15/60, tempoLabel:"169h 15min" },
+    years:{
+      2017:{ativ:1,  dist:55.7,   elev:547,   tempoH:2+43/60,  tempoLabel:"2h43min"},
+      2022:{ativ:2,  dist:10.1,   elev:123,   tempoH:1+3/60,   tempoLabel:"1h3min"},
+      2024:{ativ:39, dist:1164.8, elev:10875, tempoH:69+58/60, tempoLabel:"69h58min"},
+      2025:{ativ:28, dist:869.4,  elev:9903,  tempoH:58+21/60, tempoLabel:"58h21min"},
+      2026:{ativ:16, dist:519.4,  elev:6120,  tempoH:37+8/60,  tempoLabel:"37h8min"},
+    },
+    last4:{ ativSem:1, distSem:7.2, elevSem:97, tempoSem:"25min 41s" },
+    records:{
+      "Pedalada mais longa":"90,5 km", "Maior escalada":"172 m", "Maior ganho de elevação":"949 m",
+      "5 milhas":"4:34", "10 km":"8:09", "10 milhas":"36:22", "20 km":"50:17", "30 km":"1:20:00",
+      "40K":"1:58:29", "50 km":"2:39:25", "80K":"5:04:08", "50 milhas":"5:05:38", "90K":"5:38:05",
+      "100 km":null, "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'carlos', name:'Carlos Augusto', color:'#d946ef',
+    totals:{ ativ:161, dist:3672.0, elev:34186, tempoH: 207+47/60, tempoLabel:"207h 47min" },
+    years:{
+      2016:{ativ:32, dist:553.3,  elev:4266,  tempoH:31+44/60, tempoLabel:"31h44min"},
+      2017:{ativ:13, dist:197.4,  elev:1557,  tempoH:11+1/60,  tempoLabel:"11h1min"},
+      2020:{ativ:2,  dist:28.3,   elev:252,   tempoH:1+20/60,  tempoLabel:"1h20min"},
+      2021:{ativ:1,  dist:12.6,   elev:92,    tempoH:39.083/60, tempoLabel:"0h39min"},
+      2024:{ativ:58, dist:1484.4, elev:13549, tempoH:77+24/60, tempoLabel:"77h24min"},
+      2025:{ativ:41, dist:1062.5, elev:10856, tempoH:63+11/60, tempoLabel:"63h11min"},
+      2026:{ativ:14, dist:333.2,  elev:3615,  tempoH:22+25/60, tempoLabel:"22h25min"},
+    },
+    last4:{ ativSem:0, distSem:0, elevSem:0, tempoSem:"0h 0min" },
+    records:{
+      "Pedalada mais longa":"52,1 km", "Maior escalada":"217 m", "Maior ganho de elevação":"630 m",
+      "5 milhas":"15:58", "10 km":"21:39", "10 milhas":"37:22", "20 km":"47:50", "30 km":"1:17:19",
+      "40K":"1:59:19", "50 km":"3:07:24", "80K":null, "50 milhas":null, "90K":null,
+      "100 km":null, "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'brunopedra', name:'Bruno Pedra', color:'#be123c',
+    totals:{ ativ:121, dist:2476.7, elev:22909, tempoH: 133+19/60, tempoLabel:"133h 19min" },
+    years:{
+      2023:{ativ:72, dist:1886.3, elev:17483, tempoH:103+28/60, tempoLabel:"103h28min"},
+      2024:{ativ:18, dist:228.4, elev:2045, tempoH:11+22/60, tempoLabel:"11h22min"},
+      2025:{ativ:23, dist:254.6, elev:2302, tempoH:13+1/60,  tempoLabel:"13h1min"},
+      2026:{ativ:8,  dist:107.2, elev:1079, tempoH:5+27/60,  tempoLabel:"5h27min"},
+    },
+    last4:{ ativSem:0, distSem:0, elevSem:0, tempoSem:"0h 0min" },
+    records:{
+      "Pedalada mais longa":"106,5 km", "Maior escalada":"234 m", "Maior ganho de elevação":"1.310 m",
+      "5 milhas":"15:44", "10 km":"20:43", "10 milhas":"34:33", "20 km":"43:21", "30 km":"1:15:59",
+      "40K":"1:46:08", "50 km":"2:23:39", "80K":"4:33:06", "50 milhas":"4:34:25", "90K":"5:13:19",
+      "100 km":"5:52:50", "100 milhas":null, "180K":null
+    }
+  },
+  {
+    id:'helio', name:'Helio Almeida', color:'#64748b',
+    totals:{ ativ:373, dist:17258.0, elev:166299, tempoH: 890+34/60, tempoLabel:"890h 34min" },
+    years:{
+      2023:{ativ:59,  dist:2189.8, elev:21515, tempoH:121+18/60, tempoLabel:"121h18min"},
+      2024:{ativ:109, dist:4645.5, elev:43349, tempoH:242+57/60, tempoLabel:"242h57min"},
+      2025:{ativ:131, dist:6495.0, elev:64245, tempoH:329+14/60, tempoLabel:"329h14min"},
+      2026:{ativ:74,  dist:3927.7, elev:37191, tempoH:197+3/60,  tempoLabel:"197h3min"},
+    },
+    last4:{ ativSem:3, distSem:131.1, elevSem:1211, tempoSem:"6h 19min" },
+    records:{
+      "Pedalada mais longa":"165,6 km", "Maior escalada":"291 m", "Maior ganho de elevação":"1.621 m",
+      "5 milhas":"11:50", "10 km":"15:40", "10 milhas":"27:49", "20 km":"35:42", "30 km":"54:40",
+      "40K":"1:19:11", "50 km":"1:43:40", "80K":"3:08:06", "50 milhas":"3:09:03", "90K":"3:33:42",
+      "100 km":"3:57:33", "100 milhas":"9:15:30", "180K":null
+    }
+  },
+  {
+    id:'frank', name:'Frank Versol', color:'#06b6d4',
+    totals:{ ativ:99, dist:2000.6, elev:20822, tempoH: 173+10/60, tempoLabel:"173h 10min" },
+    years:{
+      2016:{ativ:10, dist:224.3, elev:2017, tempoH:20+3/60,  tempoLabel:"20h3min"},
+      2019:{ativ:9,  dist:391.2, elev:4506, tempoH:22+55/60, tempoLabel:"22h55min"},
+      2020:{ativ:2,  dist:22.5,  elev:219,  tempoH:3+4/60,   tempoLabel:"3h4min"},
+      2021:{ativ:7,  dist:350.2, elev:3655, tempoH:34+22/60, tempoLabel:"34h22min"},
+      2022:{ativ:4,  dist:114.2, elev:1181, tempoH:8+7/60,   tempoLabel:"8h7min"},
+      2023:{ativ:0,  dist:0,     elev:0,    tempoH:0,        tempoLabel:"0h0min"},
+      2024:{ativ:1,  dist:34.9,  elev:333,  tempoH:2+2/60,   tempoLabel:"2h2min"},
+      2025:{ativ:3,  dist:118.7, elev:1237, tempoH:6+27/60,  tempoLabel:"6h27min"},
+      2026:{ativ:63, dist:744.3, elev:7615, tempoH:76+7/60,  tempoLabel:"76h7min"},
+    },
+    last4:{ ativSem:1, distSem:22.1, elevSem:240, tempoSem:"1h 14min" },
+    records:{
+      "Pedalada mais longa":"92,9 km", "Maior escalada":"324 m", "Maior ganho de elevação":"882 m",
+      "5 milhas":"13:12", "10 km":"16:47", "10 milhas":"30:04", "20 km":"43:58", "30 km":"1:17:51",
+      "40K":"1:55:15", "50 km":"2:21:51", "80K":"5:00:12", "50 milhas":"5:01:31", "90K":"6:37:53",
+      "100 km":null, "100 milhas":null, "180K":null
+    }
+  },
+];
+
+const RECORD_CATEGORIES = [
+  "Pedalada mais longa","Maior escalada","Maior ganho de elevação","5 milhas","10 km","10 milhas",
+  "20 km","30 km","40K","50 km","80K","50 milhas","90K","100 km","100 milhas","180K"
+];
+const HIGHER_IS_BETTER = ["Pedalada mais longa","Maior escalada","Maior ganho de elevação"];
+
+function fmtKm(v){ return v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' km'; }
+function fmtM(v){ return Math.round(v).toLocaleString('pt-BR') + ' m'; }
+function fmtInt(v){ return v.toLocaleString('pt-BR'); }
+function hexToRgba(hex, a){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function parseNum(str){ return parseFloat(str.replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',', '.')); }
+function parseTimeToSeconds(str){
+  const parts = str.split(':').map(Number);
+  if(parts.length === 2) return parts[0]*60 + parts[1];
+  if(parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  return NaN;
+}
+
+const ALL_YEARS = Array.from(new Set(RIDERS.flatMap(r => Object.keys(r.years).map(Number)))).sort((a,b)=>a-b);
+
+function shortName(rider){
+  return rider.name;
+}
+
+function renderLegend(){
+  const sorted = [...RIDERS].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  document.getElementById('legend').innerHTML = sorted.map(r =>
+    `<div class="legend-chip" style="color:${r.color}" data-rider="${r.id}"><span class="dot" style="background:${r.color}"></span>${r.name}</div>`
+  ).join('');
+  document.querySelectorAll('#legend .legend-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=> openRiderModal(chip.dataset.rider));
+  });
+}
+
+// ---------- Modal: detalhes do ciclista + comparação ----------
+let modalCompareId = null;
+
+function findRider(id){ return RIDERS.find(r=>r.id===id); }
+
+function openRiderModal(id){
+  modalCompareId = null;
+  renderModalContent(id);
+  document.getElementById('rider-modal').classList.add('active');
+}
+
+function closeModal(){
+  document.getElementById('rider-modal').classList.remove('active');
+}
+
+function fmtCompareVal(label, v){
+  if(label === 'Distância (km)') return v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+  if(label === 'Tempo (h)') return v.toFixed(1)+'h';
+  return fmtInt(Math.round(v));
+}
+
+function renderModalContent(id){
+  const r = findRider(id);
+  if(!r) return;
+
+  const otherRiders = RIDERS.filter(x=>x.id!==id).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const compareOptions = otherRiders.map(o=>
+    `<option value="${o.id}" ${modalCompareId===o.id?'selected':''}>${o.name}</option>`
+  ).join('');
+
+  const recordsHtml = RECORD_CATEGORIES.map(cat=>{
+    const val = r.records[cat];
+    return `<div class="modal-rec"><span>${cat}</span><span class="rv">${val || '—'}</span></div>`;
+  }).join('');
+
+  let compareHtml = '';
+  if(modalCompareId){
+    const c = findRider(modalCompareId);
+    const rows = [
+      {label:'Atividades', a:r.totals.ativ, b:c.totals.ativ},
+      {label:'Distância (km)', a:r.totals.dist, b:c.totals.dist},
+      {label:'Elevação (m)', a:r.totals.elev, b:c.totals.elev},
+      {label:'Tempo (h)', a:r.totals.tempoH, b:c.totals.tempoH},
+    ];
+    compareHtml = `
+      <div class="compare-table">
+        <div class="compare-head"><div>Métrica</div><div style="text-align:center">${shortName(r)}</div><div style="text-align:center">${shortName(c)}</div></div>
+        ${rows.map(row=>{
+          const aWin = row.a > row.b, bWin = row.b > row.a;
+          return `<div class="compare-line">
+            <div>${row.label}</div>
+            <div class="compare-val ${aWin?'win':''}">${fmtCompareVal(row.label,row.a)}</div>
+            <div class="compare-val ${bWin?'win':''}">${fmtCompareVal(row.label,row.b)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  document.getElementById('modal-body').innerHTML = `
+    <h3 class="modal-name" style="color:${r.color}">${r.name}</h3>
+    <div class="modal-sub">${r.retired ? 'Ex-Ciclista · ' : ''}Carreira desde ${Math.min(...Object.keys(r.years).map(Number))}</div>
+
+    <div class="modal-section-title">Totais da carreira</div>
+    <div class="modal-grid">
+      <div class="modal-stat"><div class="k">Atividades</div><div class="v">${fmtInt(r.totals.ativ)}</div></div>
+      <div class="modal-stat"><div class="k">Distância</div><div class="v">${fmtKm(r.totals.dist)}</div></div>
+      <div class="modal-stat"><div class="k">Elevação</div><div class="v">${fmtM(r.totals.elev)}</div></div>
+      <div class="modal-stat"><div class="k">Tempo</div><div class="v">${r.totals.tempoLabel}</div></div>
+    </div>
+
+    <div class="modal-section-title">Últimas 4 semanas</div>
+    <div class="modal-grid">
+      <div class="modal-stat"><div class="k">Ativ/semana</div><div class="v">${r.last4.ativSem}</div></div>
+      <div class="modal-stat"><div class="k">Dist/semana</div><div class="v">${r.last4.distSem.toFixed(1)} km</div></div>
+      <div class="modal-stat"><div class="k">Elev/semana</div><div class="v">${r.last4.elevSem} m</div></div>
+      <div class="modal-stat"><div class="k">Tempo/semana</div><div class="v">${r.last4.tempoSem}</div></div>
+    </div>
+
+    <div class="modal-section-title">Melhores marcas</div>
+    <div class="modal-records">${recordsHtml}</div>
+
+    <div class="compare-row">
+      <span style="font-size:12.5px;color:var(--muted)">🆚 Comparar com:</span>
+      <select id="compare-select">
+        <option value="">Selecione...</option>
+        ${compareOptions}
+      </select>
+    </div>
+    ${compareHtml}
+  `;
+
+  document.getElementById('compare-select').addEventListener('change', (e)=>{
+    modalCompareId = e.target.value || null;
+    renderModalContent(id);
+  });
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('rider-modal').addEventListener('click', (e)=>{
+  if(e.target.id === 'rider-modal') closeModal();
+});
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeModal(); });
+
+function renderTotals(){
+  const el = document.getElementById('totals-cards');
+  const metrics = [
+    {key:'ativ', label:'Atividades', fmt:fmtInt},
+    {key:'dist', label:'Distância total', fmt:fmtKm},
+    {key:'elev', label:'Ganho de elevação', fmt:fmtM},
+    {key:'tempoLabel', label:'Tempo total', fmt:(v)=>v, sortKey:'tempoH'}
+  ];
+  el.innerHTML = metrics.map(m=>{
+    const sortKey = m.sortKey || m.key;
+    const sorted = [...RIDERS].sort((a,b) => b.totals[sortKey] - a.totals[sortKey]);
+    const rows = sorted.map((r,i) => `
+      <div class="stat-row ${i===0?'leader':''}" data-rider="${r.id}">
+        <div class="name" style="color:${r.color}"><span class="rank">${i+1}º</span>${shortName(r)}</div>
+        <div class="val">${m.fmt(r.totals[m.key])}</div>
+      </div>
+    `).join('');
+    return `<div class="stat-card"><div class="metric-label">${m.label}</div>${rows}</div>`;
+  }).join('');
+
+  el.querySelectorAll('.stat-row').forEach(row=>{
+    row.addEventListener('click', ()=> openRiderModal(row.dataset.rider));
+  });
+
+  const distLeader = [...RIDERS].sort((a,b)=>b.totals.dist - a.totals.dist)[0];
+  document.getElementById('totals-insight').innerHTML =
+    `🏆 <b>${distLeader.name}</b> lidera em distância total de carreira entre os Reçaíbos. Confira a aba "Recordes" pra ver quem manda em cada tipo de prova.`;
+}
+
+let currentMetric = 'dist';
+let currentYear = Math.max(...ALL_YEARS);
+const METRIC_DEFS = [
+  {key:'dist', label:'Distância (km)'},
+  {key:'elev', label:'Elevação (m)'},
+  {key:'ativ', label:'Atividades'},
+  {key:'tempoH', label:'Tempo (h)'},
+];
+
+function renderYearControls(){
+  const el = document.getElementById('year-controls');
+  el.innerHTML = ALL_YEARS.map(y => `<button class="metric-btn ${y===currentYear?'active':''}" data-year="${y}">${y}</button>`).join('');
+  el.querySelectorAll('.metric-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ currentYear = Number(btn.dataset.year); renderYearControls(); renderChart(); });
+  });
+}
+
+function renderMetricControls(){
+  const el = document.getElementById('metric-controls');
+  el.innerHTML = METRIC_DEFS.map(m => `<button class="metric-btn ${m.key===currentMetric?'active':''}" data-metric="${m.key}">${m.label}</button>`).join('');
+  el.querySelectorAll('.metric-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ currentMetric = btn.dataset.metric; renderMetricControls(); renderChart(); });
+  });
+}
+
+function valueFor(rider, year, key){ const y = rider.years[year]; if(!y) return 0; return y[key] || 0; }
+function labelFor(rider, year, key){
+  const y = rider.years[year]; if(!y) return '—';
+  if(key==='tempoH') return y.tempoLabel;
+  if(key==='dist') return fmtKm(y.dist);
+  if(key==='elev') return fmtM(y.elev);
+  return fmtInt(y.ativ);
+}
+
+function renderChart(){
+  const container = document.getElementById('chart-container');
+  const rows = RIDERS
+    .map(r => ({ r, v: valueFor(r, currentYear, currentMetric) }))
+    .sort((a,b)=> b.v - a.v);
+  const maxVal = Math.max(...rows.map(x=>x.v)) || 1;
+
+  container.innerHTML = rows.map(({r,v})=>{
+    const pct = v>0 ? Math.max((v/maxVal*100), 2) : 0;
+    const label = v>0 ? labelFor(r, currentYear, currentMetric) : '—';
+    return `
+      <div class="year-bar-row" data-rider="${r.id}">
+        <div class="year-bar-name" style="color:${r.color}">${shortName(r)}</div>
+        <div class="year-bar-track"><div class="year-bar-fill" style="width:${pct}%; background:${r.color}"></div></div>
+        <div class="year-bar-val">${label}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.year-bar-row').forEach(row=>{
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', ()=> openRiderModal(row.dataset.rider));
+  });
+
+  const top = rows[0];
+  const metricLabel = METRIC_DEFS.find(m=>m.key===currentMetric).label.split(' (')[0].toLowerCase();
+  document.getElementById('anos-insight').innerHTML = (top && top.v > 0)
+    ? `🏆 Em <b>${currentYear}</b>, <b style="color:${top.r.color}">${top.r.name}</b> liderou em ${metricLabel}.`
+    : `Nenhum dado registrado para ${currentYear}.`;
+}
+
+function splitName(name){
+  const parts = name.split(' ');
+  return { first: parts[0], rest: parts.slice(1).join(' ') };
+}
+
+function renderRecords(){
+  const el = document.getElementById('records-container');
+  const sortedRiders = [...RIDERS].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  const cols = `92px repeat(${sortedRiders.length}, minmax(0,1fr))`;
+  let head = `<div class="rec-row head" style="grid-template-columns:${cols}"><div class="rec-label">Categoria</div>${sortedRiders.map(r=>{
+    const {first, rest} = splitName(r.name);
+    return `<div class="rec-name" style="color:${r.color}"><span>${first}</span>${rest ? `<span>${rest}</span>` : ''}</div>`;
+  }).join('')}</div>`;
+
+  const wins = {}; sortedRiders.forEach(r => wins[r.id] = 0);
+
+  let rows = RECORD_CATEGORIES.map(cat=>{
+    const higherBetter = HIGHER_IS_BETTER.includes(cat);
+    let bestVal = higherBetter ? -Infinity : Infinity;
+    let bestId = null;
+    sortedRiders.forEach(r=>{
+      const raw = r.records[cat];
+      if(!raw) return;
+      const val = higherBetter ? parseNum(raw) : parseTimeToSeconds(raw);
+      if(higherBetter ? val > bestVal : val < bestVal){ bestVal = val; bestId = r.id; }
+    });
+    if(bestId) wins[bestId]++;
+    const cells = sortedRiders.map(r=>{
+      const raw = r.records[cat];
+      const isWinner = r.id === bestId;
+      const style = isWinner ? `background:${hexToRgba(r.color,0.15)}; color:${r.color};` : '';
+      return `<div class="rec-val ${isWinner?'winner':''}" style="${style}">${raw || '—'}</div>`;
+    }).join('');
+    return `<div class="rec-row" style="grid-template-columns:${cols}"><div class="rec-label">${cat}</div>${cells}</div>`;
+  }).join('');
+
+  el.innerHTML = head + rows;
+
+  const placar = sortedRiders.map(r => `${shortName(r)}: <b style="color:${r.color}">${wins[r.id]}</b>`).join(' · ');
+  document.getElementById('records-insight').innerHTML = `📊 Placar de recordes — ${placar}.`;
+}
+
+function parseWeeklyTimeToSeconds(str){
+  if(!str) return 0;
+  let h=0, m=0, s=0;
+  const hM = str.match(/(\d+)\s*h/); if(hM) h = parseInt(hM[1]);
+  const mM = str.match(/(\d+)\s*min/); if(mM) m = parseInt(mM[1]);
+  const sM = str.match(/(\d+)\s*s/); if(sM) s = parseInt(sM[1]);
+  return h*3600 + m*60 + s;
+}
+
+function renderWeeks(){
+  const el = document.getElementById('weeks-cards');
+  const metrics = [
+    {label:'Atividades/semana', key:'ativSem', fmt:(v)=>v, sortVal:(r)=>r.last4.ativSem},
+    {label:'Distância média/semana', key:'distSem', fmt:(v)=>v.toFixed(1)+' km', sortVal:(r)=>r.last4.distSem},
+    {label:'Ganho de elevação/semana', key:'elevSem', fmt:(v)=>v+' m', sortVal:(r)=>r.last4.elevSem},
+    {label:'Tempo médio/semana', key:'tempoSem', fmt:(v)=>v, sortVal:(r)=>parseWeeklyTimeToSeconds(r.last4.tempoSem)},
+  ];
+  el.innerHTML = metrics.map(m=>{
+    const sorted = [...RIDERS].sort((a,b)=> m.sortVal(b) - m.sortVal(a));
+    const rows = sorted.map((r,i)=>`
+      <div class="stat-row ${i===0 ? 'leader':''}" data-rider="${r.id}">
+        <div class="name" style="color:${r.color}"><span class="rank">${i+1}º</span>${shortName(r)}</div>
+        <div class="val">${m.fmt(r.last4[m.key])}</div>
+      </div>
+    `).join('');
+    return `<div class="stat-card"><div class="metric-label">${m.label}</div>${rows}</div>`;
+  }).join('');
+
+  el.querySelectorAll('.stat-row').forEach(row=>{
+    row.addEventListener('click', ()=> openRiderModal(row.dataset.rider));
+  });
+}
+
+function lastActiveYear(r){
+  const years = Object.keys(r.years).map(Number).filter(y => (r.years[y].ativ || 0) > 0);
+  return years.length ? Math.max(...years) : null;
+}
+
+function renderAlerts(){
+  const el = document.getElementById('alerts-cards');
+  const emptyMsg = document.getElementById('alerts-empty');
+  const currentYear = Math.max(...ALL_YEARS);
+
+  const alerts = [];
+  RIDERS.forEach(r=>{
+    if(r.retired){
+      alerts.push({ rider:r, tag:'aposentado', desc:'Aposentado.' });
+      return;
+    }
+    const histYears = Object.keys(r.years).map(Number).filter(y => y !== currentYear);
+    if(histYears.length === 0) return;
+    const histAvgWeekly = histYears.reduce((sum,y) => sum + r.years[y].dist, 0) / histYears.length / 52;
+    const currentWeekly = r.last4.distSem;
+    const ratio = histAvgWeekly > 0 ? currentWeekly / histAvgWeekly : null;
+
+    if(r.last4.ativSem === 0){
+      alerts.push({
+        rider:r, tag:'parado',
+        desc:`0 atividades nas últimas 4 semanas. Média histórica de ritmo: ~${histAvgWeekly.toFixed(1)} km/semana.`
+      });
+    } else if(ratio !== null && ratio < 0.5){
+      const queda = Math.round((1-ratio)*100);
+      alerts.push({
+        rider:r, tag:'queda', quedaPct:queda,
+        desc:`Queda de ~${queda}% no ritmo: média histórica ~${histAvgWeekly.toFixed(1)} km/semana → atual ${currentWeekly.toFixed(1)} km/semana.`
+      });
+    }
+  });
+
+  // Ordena por tempo sem pedalar: anos completos desde a última atividade registrada,
+  // depois "parado" antes de "queda", e dentro de "queda" pela maior queda percentual.
+  alerts.forEach(a=>{
+    const lay = lastActiveYear(a.rider);
+    a.yearsStopped = lay === null ? 99 : currentYear - lay;
+  });
+  const tagRank = t => t === 'aposentado' ? 0 : t === 'parado' ? 1 : 2;
+  alerts.sort((a,b)=>{
+    if(a.yearsStopped !== b.yearsStopped) return b.yearsStopped - a.yearsStopped;
+    if(tagRank(a.tag) !== tagRank(b.tag)) return tagRank(a.tag) - tagRank(b.tag);
+    if(a.tag === 'queda' && b.tag === 'queda') return b.quedaPct - a.quedaPct;
+    return 0;
+  });
+
+  if(alerts.length === 0){
+    el.innerHTML = '';
+    emptyMsg.style.display = 'block';
+    return;
+  }
+  emptyMsg.style.display = 'none';
+  el.innerHTML = alerts.map(a => `
+    <div class="alert-card" style="--rc:${a.rider.color}" data-rider="${a.rider.id}">
+      <div class="a-name" style="color:${a.rider.color}">${a.rider.name}</div>
+      <div class="a-tag ${a.tag}">${a.tag === 'parado' ? '⏸ Parado' : a.tag === 'aposentado' ? '🚪 Ex-Ciclista' : '📉 Queda forte'}</div>
+      <div class="a-desc">${a.desc}</div>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.alert-card').forEach(card=>{
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', ()=> openRiderModal(card.dataset.rider));
+  });
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
+renderLegend();
+renderTotals();
+renderYearControls();
+renderMetricControls();
+renderChart();
+renderRecords();
+renderWeeks();
+renderAlerts();
+</script>
+
+</body>
+</html>
