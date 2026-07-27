@@ -208,6 +208,40 @@
   }
 
   @media(max-width:600px){ .bar{ width:10px; } .chart{ gap:6px; } }
+
+  .edit-fab{
+    position:fixed; right:20px; bottom:20px; z-index:40;
+    background:var(--gold); color:#1a1508; border:none; border-radius:100px;
+    padding:13px 20px; font-weight:700; font-size:13.5px; cursor:pointer;
+    box-shadow:0 6px 20px rgba(0,0,0,0.18); font-family:'Inter',sans-serif;
+  }
+  .edit-fab:hover{ filter:brightness(1.05); }
+
+  .edit-panel{ max-width:460px; }
+  .edit-field{ margin-bottom:14px; text-align:left; }
+  .edit-field label{ display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px; }
+  .edit-field input, .edit-field select{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); font-size:14px; font-family:'Inter',sans-serif;
+  }
+  .edit-row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .edit-submit{
+    width:100%; padding:12px; border-radius:8px; border:none; background:var(--gold);
+    color:#1a1508; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+  .edit-submit:hover{ filter:brightness(1.05); }
+  .edit-msg{ font-size:13px; margin-top:12px; text-align:center; }
+  .edit-msg.ok{ color:#22c55e; }
+  .edit-msg.err{ color:#f87171; }
+  .edit-download{
+    width:100%; padding:12px; border-radius:8px; border:1px solid var(--gold); background:transparent;
+    color:var(--gold); font-weight:700; font-size:13.5px; cursor:pointer; margin-top:10px;
+  }
+  .edit-download:hover{ background:rgba(217,121,27,0.1); }
+  .edit-log-list{ margin-top:16px; max-height:170px; overflow-y:auto; border-top:1px solid var(--line); padding-top:10px; }
+  .edit-log-row{ display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .edit-log-row button{ background:none; border:none; color:#f87171; cursor:pointer; font-size:14px; }
+  .edit-pin-box input{ text-align:center; letter-spacing:.3em; font-size:20px; }
 </style>
 </head>
 <body>
@@ -257,6 +291,17 @@
 </div>
 
 <footer>Fonte: Strava · Reçaíbos 🚴</footer>
+
+<script type="application/json" id="training-log-data">{}</script>
+
+<button id="edit-fab" class="edit-fab" title="Área do treinador">🚴‍♂️ Registrar pedalada</button>
+
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-panel edit-panel">
+    <button class="modal-close" id="edit-modal-close">✕</button>
+    <div id="edit-modal-body"></div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="rider-modal">
   <div class="modal-panel">
@@ -522,7 +567,7 @@ const RIDERS = [
     }
   },
   {
-    id:'frank', name:'Frank Versol', color:'#06b6d4',
+    id:'frank', name:'Versol Frank', color:'#06b6d4',
     totals:{ ativ:99, dist:2000.6, elev:20822, tempoH: 173+10/60, tempoLabel:"173h 10min" },
     years:{
       2016:{ativ:10, dist:224.3, elev:2017, tempoH:20+3/60,  tempoLabel:"20h3min"},
@@ -544,6 +589,79 @@ const RIDERS = [
     }
   },
 ];
+
+// --- Registro de pedaladas do fim de semana (editável pelo painel de treino) ---
+// Guarda uma cópia "limpa" dos números originais de cada ciclista antes de qualquer
+// pedalada registrada aqui, para que os cálculos abaixo nunca somem duas vezes.
+RIDERS.forEach(r=>{
+  r._baseline = {
+    totals: {...r.totals},
+    years: JSON.parse(JSON.stringify(r.years)),
+    last4: {...r.last4}
+  };
+});
+
+let TRAINING_LOG = {};
+try{
+  TRAINING_LOG = JSON.parse(document.getElementById('training-log-data').textContent || '{}');
+}catch(e){ TRAINING_LOG = {}; }
+
+function fmtHM(hoursFloat){
+  const totalMin = Math.round(hoursFloat*60);
+  const hh = Math.floor(totalMin/60), mm = totalMin%60;
+  return `${hh}h ${mm}min`;
+}
+
+function applyLogToRiders(){
+  RIDERS.forEach(r=>{
+    r.totals = {...r._baseline.totals};
+    r.years = JSON.parse(JSON.stringify(r._baseline.years));
+    r.last4 = {...r._baseline.last4};
+    const entries = (TRAINING_LOG[r.id] || []).slice().sort((a,b)=> new Date(a.date) - new Date(b.date));
+    r.log = entries;
+    if(!entries.length) return;
+
+    const yearAdd = {};
+    let addAtiv=0, addKm=0, addElev=0, addMin=0;
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 28*24*3600*1000);
+    let recentAtiv=0, recentKm=0, recentElev=0, recentMin=0;
+
+    entries.forEach(e=>{
+      addAtiv++; addKm+=e.km; addElev+=(e.elevM||0); addMin+=e.timeMin;
+      const y = new Date(e.date+'T00:00:00').getFullYear();
+      if(!yearAdd[y]) yearAdd[y] = {ativ:0,km:0,elev:0,min:0};
+      yearAdd[y].ativ++; yearAdd[y].km+=e.km; yearAdd[y].elev+=(e.elevM||0); yearAdd[y].min+=e.timeMin;
+      if(new Date(e.date+'T00:00:00') >= cutoff){ recentAtiv++; recentKm+=e.km; recentElev+=(e.elevM||0); recentMin+=e.timeMin; }
+    });
+
+    r.totals.ativ += addAtiv;
+    r.totals.dist = +(r.totals.dist + addKm).toFixed(1);
+    r.totals.elev += Math.round(addElev);
+    r.totals.tempoH += addMin/60;
+    r.totals.tempoLabel = fmtHM(r.totals.tempoH);
+
+    Object.keys(yearAdd).forEach(yk=>{
+      const y = Number(yk);
+      if(!r.years[y]) r.years[y] = {ativ:0,dist:0,elev:0,tempoH:0,tempoLabel:'0h 0min'};
+      r.years[y].ativ += yearAdd[y].ativ;
+      r.years[y].dist = +(r.years[y].dist + yearAdd[y].km).toFixed(1);
+      r.years[y].elev += Math.round(yearAdd[y].elev);
+      r.years[y].tempoH += yearAdd[y].min/60;
+      r.years[y].tempoLabel = fmtHM(r.years[y].tempoH);
+    });
+
+    if(recentAtiv>0){
+      r.last4 = {
+        ativSem: +(recentAtiv/4).toFixed(1),
+        distSem: +(recentKm/4).toFixed(1),
+        elevSem: Math.round(recentElev/4),
+        tempoSem: fmtHM(recentMin/4/60)
+      };
+    }
+  });
+}
+applyLogToRiders();
 
 const RECORD_CATEGORIES = [
   "Pedalada mais longa","Maior escalada","Maior ganho de elevação","5 milhas","10 km","10 milhas",
@@ -935,14 +1053,189 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
+// --- Painel de edição (registro de pedaladas do fim de semana) ---
+const EDIT_PIN = "2020";
+let editUnlocked = false;
+let editSelectedRider = RIDERS[0].id;
+
+const editFab = document.getElementById('edit-fab');
+const editModal = document.getElementById('edit-modal');
+const editBody = document.getElementById('edit-modal-body');
+
+function closeEditModal(){ editModal.classList.remove('active'); }
+document.getElementById('edit-modal-close').addEventListener('click', closeEditModal);
+editModal.addEventListener('click', (e)=>{ if(e.target === editModal) closeEditModal(); });
+
+function openEditModal(){
+  editModal.classList.add('active');
+  editUnlocked ? renderEditForm() : renderPinScreen();
+}
+editFab.addEventListener('click', openEditModal);
+
+function renderPinScreen(){
+  editBody.innerHTML = `
+    <h3 style="margin-top:0;">Área do treinador</h3>
+    <p style="color:var(--muted); font-size:13px;">Digite o código para registrar uma pedalada.</p>
+    <div class="edit-field edit-pin-box">
+      <input type="password" id="edit-pin-input" maxlength="8" inputmode="numeric" placeholder="••••">
+    </div>
+    <button class="edit-submit" id="edit-pin-submit">Entrar</button>
+    <div class="edit-msg" id="edit-pin-msg"></div>
+  `;
+  const submit = ()=>{
+    const val = document.getElementById('edit-pin-input').value.trim();
+    const feedback = document.getElementById('edit-pin-msg');
+    if(val === EDIT_PIN){
+      editUnlocked = true;
+      renderEditForm();
+    }else{
+      feedback.className = 'edit-msg err';
+      feedback.textContent = 'Código incorreto.';
+    }
+  };
+  document.getElementById('edit-pin-submit').addEventListener('click', submit);
+  document.getElementById('edit-pin-input').addEventListener('keydown', (e)=>{ if(e.key==='Enter') submit(); });
+  document.getElementById('edit-pin-input').focus();
+}
+
+function todayStr(){
+  const d = new Date();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function renderEditForm(){
+  editBody.innerHTML = `
+    <h3 style="margin-top:0;">Registrar pedalada</h3>
+    <div class="edit-field">
+      <label>Ciclista</label>
+      <select id="edit-rider">
+        ${RIDERS.map(r=>`<option value="${r.id}" ${r.id===editSelectedRider?'selected':''}>${r.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="edit-field">
+      <label>Data da pedalada</label>
+      <input type="date" id="edit-date" value="${todayStr()}">
+    </div>
+    <div class="edit-row2">
+      <div class="edit-field">
+        <label>Distância (km)</label>
+        <input type="number" step="0.1" min="0" id="edit-km" placeholder="ex: 42,5">
+      </div>
+      <div class="edit-field">
+        <label>Ganho de elevação (m) — opcional</label>
+        <input type="number" step="1" min="0" id="edit-elev" placeholder="ex: 350">
+      </div>
+    </div>
+    <div class="edit-row2">
+      <div class="edit-field">
+        <label>Tempo — horas</label>
+        <input type="number" step="1" min="0" id="edit-h" placeholder="0">
+      </div>
+      <div class="edit-field">
+        <label>Tempo — minutos</label>
+        <input type="number" step="1" min="0" max="59" id="edit-m" placeholder="0">
+      </div>
+    </div>
+    <button class="edit-submit" id="edit-save">Salvar pedalada</button>
+    <button class="edit-download" id="edit-download">⬇️ Baixar página atualizada (.html)</button>
+    <div class="edit-msg" id="edit-form-msg"></div>
+    <div class="edit-log-list" id="edit-log-list"></div>
+  `;
+  document.getElementById('edit-rider').addEventListener('change', (e)=>{ editSelectedRider = e.target.value; renderEditLogList(); });
+  document.getElementById('edit-save').addEventListener('click', saveEntry);
+  document.getElementById('edit-download').addEventListener('click', downloadUpdatedPage);
+  renderEditLogList();
+}
+
+function renderEditLogList(){
+  const list = document.getElementById('edit-log-list');
+  const raw = TRAINING_LOG[editSelectedRider] || [];
+  const entries = raw.slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  if(!entries.length){
+    list.innerHTML = `<div style="color:var(--muted); font-size:12.5px;">Nenhuma pedalada registrada ainda para este ciclista.</div>`;
+    return;
+  }
+  list.innerHTML = entries.map(e=>{
+    const realIndex = raw.indexOf(e);
+    const dataFmt = e.date.split('-').reverse().join('/');
+    const hh = Math.floor(e.timeMin/60), mm = String(e.timeMin%60).padStart(2,'0');
+    return `<div class="edit-log-row">
+      <span>${dataFmt} · ${e.km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})} km · ${hh}h${mm}</span>
+      <button data-idx="${realIndex}">✕</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      TRAINING_LOG[editSelectedRider].splice(Number(btn.dataset.idx),1);
+      syncLogScript();
+      applyLogToRiders();
+      renderAll();
+      renderEditLogList();
+    });
+  });
+}
+
+function syncLogScript(){
+  document.getElementById('training-log-data').textContent = JSON.stringify(TRAINING_LOG);
+}
+
+function saveEntry(){
+  const riderId = document.getElementById('edit-rider').value;
+  const date = document.getElementById('edit-date').value;
+  const km = parseFloat(document.getElementById('edit-km').value.replace(',','.'));
+  const elev = parseFloat(document.getElementById('edit-elev').value) || 0;
+  const h = parseInt(document.getElementById('edit-h').value, 10) || 0;
+  const m = parseInt(document.getElementById('edit-m').value, 10) || 0;
+  const msg = document.getElementById('edit-form-msg');
+
+  if(!date || !km || km<=0 || (h===0 && m===0)){
+    msg.className = 'edit-msg err';
+    msg.textContent = 'Preencha ao menos data, distância e tempo.';
+    return;
+  }
+
+  if(!TRAINING_LOG[riderId]) TRAINING_LOG[riderId] = [];
+  TRAINING_LOG[riderId].push({ date, km, elevM: elev, timeMin: h*60+m });
+  editSelectedRider = riderId;
+
+  syncLogScript();
+  applyLogToRiders();
+  renderAll();
+  renderEditLogList();
+
+  msg.className = 'edit-msg ok';
+  msg.textContent = '✅ Pedalada registrada! Clique em "Baixar página atualizada" e suba o arquivo no GitHub pra valer pra todo mundo.';
+  document.getElementById('edit-km').value = '';
+  document.getElementById('edit-elev').value = '';
+  document.getElementById('edit-h').value = '';
+  document.getElementById('edit-m').value = '';
+}
+
+function downloadUpdatedPage(){
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'index.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeEditModal(); });
+
 renderLegend();
-renderTotals();
-renderYearControls();
-renderMetricControls();
-renderChart();
-renderRecords();
-renderWeeks();
-renderAlerts();
+function renderAll(){
+  renderTotals();
+  renderYearControls();
+  renderMetricControls();
+  renderChart();
+  renderRecords();
+  renderWeeks();
+  renderAlerts();
+}
+renderAll();
 </script>
 
 </body>
